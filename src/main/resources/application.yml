@@ -1,0 +1,42 @@
+server:
+  port: 8123
+  servlet:
+    context-path: /api
+spring:
+  application:
+    name: li-volunteer-backend
+
+  #数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/li_volunteer
+    username: root
+    password: root
+    # MyBatis 配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: false
+    #仅在开发环境打印日志
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDelete
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+# 日志配置 - 显示详细SQL语句
+logging:
+  level:
+    com.ljs.liVolunteer.mapper: debug
+    org.apache.ibatis: debug
+    org.mybatis: debug
+knife4j:
+  enable: true
+  openapi:
+    title: 接口文档
+    version: 1.0
+    group:
+      default:
+        group-name: 默认分组
+        api-rule: package
+        api-rule-resources:
+          - com.ljs.livolunteer.controller
