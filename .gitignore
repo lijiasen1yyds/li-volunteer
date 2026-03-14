@@ -32,4 +32,18 @@ build/
 ### VS Code ###
 .vscode/
 
+# Claude 配置
+.claude/
+
+# 忽略配置文件
+application.yml
+settings.local.json
+# 本地配置示例（如果存在）
+**/application-local.yml
+**/application-dev-local.yml
+# 忽略本地文件
+2022032833-李嘉森 - 开题报告.pdf
+# 忽略文档目录
+docs/
+
 ignore
