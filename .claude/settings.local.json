@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"satoken\\\\|StpUtil\\\\|@Permission\\\\|@CheckLogin\\\\|@CheckRole\" /c/Users/li/Desktop/新建文件夹/yu-picture/li-volunteer/src/main --include=\"*.java\" 2>/dev/null | head -50)",
+      "Bash(grep -r \"StpUtil\\\\|sa-token\" /c/Users/li/Desktop/新建文件夹/yu-picture/li-volunteer/src/main/java --include=\"*.java\" 2>/dev/null | head -20)",
+      "Bash(find /c/Users/li/Desktop/新建文件夹/yu-picture/li-volunteer/src/main/resources -type f -name \"*.yml\" -o -name \"*.yaml\" | xargs ls -la 2>/dev/null)",
+      "Bash(grep -r \"check_in\\\\|checkIn\\\\|CheckIn\" \"/c/Users/li/Desktop/新建文件夹/yu-picture/li-volunteer/src\" --include=\"*.java\" --include=\"*.xml\" 2>/dev/null | head -20)",
+      "Bash(cd \"C:\\\\Users\\\\li\\\\Desktop\\\\新建文件夹\\\\yu-picture\\\\li-volunteer\" && mvn compile -q 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\li\\\\Desktop\\\\新建文件夹\\\\yu-picture\\\\li-volunteer\" && ./mvnw compile -q 2>&1 | tail -20)",
+      "Bash(ls \"C:\\\\Users\\\\li\\\\Desktop\\\\新建文件夹\\\\yu-picture\\\\li-volunteer\"/mvn* \"C:\\\\Users\\\\li\\\\Desktop\\\\新建文件夹\\\\yu-picture\\\\li-volunteer\"/*.bat 2>/dev/null; which mvn 2>/dev/null)"
+    ]
+  }
+}
