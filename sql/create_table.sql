@@ -160,9 +160,4 @@ CREATE TABLE IF NOT EXISTS activity_evaluation
     INDEX idx_userId (userId)
 ) COMMENT '活动评价表' ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- ================================================================
--- 初始数据: 插入默认管理员账号
--- 密码为加密后的 "12345678"（实际项目中应使用加密工具生成）
--- ================================================================
-INSERT INTO user (userAccount, userPassword, userName, userRole)
-VALUES ('admin', 'e10adc3949ba59abbe56e057f20f883e', '系统管理员', 'admin');
+

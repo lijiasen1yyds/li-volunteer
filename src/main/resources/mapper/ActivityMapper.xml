@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ljs.livolunteer.mapper.ActivityMapper">
+
+    <resultMap id="BaseResultMap" type="com.ljs.livolunteer.model.entity.Activity">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="title" column="title" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="coverImage" column="coverImage" jdbcType="VARCHAR"/>
+        <result property="category" column="category" jdbcType="VARCHAR"/>
+        <result property="location" column="location" jdbcType="VARCHAR"/>
+        <result property="startTime" column="startTime" jdbcType="TIMESTAMP"/>
+        <result property="endTime" column="endTime" jdbcType="TIMESTAMP"/>
+        <result property="registrationDeadline" column="registrationDeadline" jdbcType="TIMESTAMP"/>
+        <result property="maxParticipants" column="maxParticipants" jdbcType="INTEGER"/>
+        <result property="currentParticipants" column="currentParticipants" jdbcType="INTEGER"/>
+        <result property="volunteerHours" column="volunteerHours" jdbcType="DECIMAL"/>
+        <result property="organizerId" column="organizerId" jdbcType="BIGINT"/>
+        <result property="status" column="status" jdbcType="INTEGER"/>
+        <result property="reviewMessage" column="reviewMessage" jdbcType="VARCHAR"/>
+        <result property="reviewerId" column="reviewerId" jdbcType="BIGINT"/>
+        <result property="reviewTime" column="reviewTime" jdbcType="TIMESTAMP"/>
+        <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+</mapper>

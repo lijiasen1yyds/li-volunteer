@@ -1,9 +1,13 @@
 package com.ljs.livolunteer.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.ljs.livolunteer.model.dto.user.UserQueryRequest;
 import com.ljs.livolunteer.model.entity.User;
 import com.ljs.livolunteer.model.vo.LoginUserVO;
 import com.ljs.livolunteer.model.vo.UserVO;
+
+import java.util.List;
 
 public interface UserService extends IService<User> {
 
@@ -40,4 +44,24 @@ public interface UserService extends IService<User> {
      * 获取用户公开视图对象
      */
     UserVO getUserVO(User user);
+
+    /**
+     * 获取用户公开视图对象列表
+     */
+    List<UserVO> getUserVOList(List<User> userList);
+
+    /**
+     * 获取查询条件
+     */
+    QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
+
+    /**
+     * 是否为管理员
+     */
+    boolean isAdmin(User user);
+
+    /**
+     * 加密密码
+     */
+    String encryptPassword(String userPassword);
 }
