@@ -12,6 +12,7 @@ import com.ljs.livolunteer.exception.ThrowUtils;
 import com.ljs.livolunteer.model.dto.user.*;
 import com.ljs.livolunteer.model.entity.User;
 import com.ljs.livolunteer.model.vo.LoginUserVO;
+import com.ljs.livolunteer.model.vo.UserStatsVO;
 import com.ljs.livolunteer.model.vo.UserVO;
 import com.ljs.livolunteer.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -209,6 +210,15 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "更新个人信息失败");
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 个人工作台聚合统计
+     */
+    @AuthCheck
+    @GetMapping("/my/stats")
+    public BaseResponse<UserStatsVO> getMyStats() {
+        return ResultUtils.success(userService.getMyStats());
     }
 
     // endregion

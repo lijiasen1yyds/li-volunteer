@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.ljs.livolunteer.model.dto.user.UserQueryRequest;
 import com.ljs.livolunteer.model.entity.User;
 import com.ljs.livolunteer.model.vo.LoginUserVO;
+import com.ljs.livolunteer.model.vo.UserStatsVO;
 import com.ljs.livolunteer.model.vo.UserVO;
 
 import java.util.List;
@@ -64,4 +65,9 @@ public interface UserService extends IService<User> {
      * 加密密码
      */
     String encryptPassword(String userPassword);
+
+    /**
+     * 获取当前登录用户的个人工作台统计
+     */
+    UserStatsVO getMyStats();
 }

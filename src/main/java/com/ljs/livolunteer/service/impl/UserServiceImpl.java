@@ -12,16 +12,30 @@ import com.ljs.livolunteer.constant.UserConstant;
 import com.ljs.livolunteer.exception.BusinessException;
 import com.ljs.livolunteer.exception.ErrorCode;
 import com.ljs.livolunteer.exception.ThrowUtils;
+import com.ljs.livolunteer.mapper.ActivityMapper;
+import com.ljs.livolunteer.mapper.ActivityRegistrationMapper;
+import com.ljs.livolunteer.mapper.CheckInRecordMapper;
 import com.ljs.livolunteer.mapper.UserMapper;
+import com.ljs.livolunteer.mapper.VolunteerHoursMapper;
 import com.ljs.livolunteer.model.dto.user.UserQueryRequest;
+import com.ljs.livolunteer.model.entity.Activity;
+import com.ljs.livolunteer.model.entity.ActivityRegistration;
+import com.ljs.livolunteer.model.entity.CheckInRecord;
 import com.ljs.livolunteer.model.entity.User;
+import com.ljs.livolunteer.model.entity.VolunteerHours;
+import com.ljs.livolunteer.model.enums.ActivityStatusEnum;
+import com.ljs.livolunteer.model.enums.RegistrationStatusEnum;
+import com.ljs.livolunteer.model.enums.VolunteerHoursStatusEnum;
 import com.ljs.livolunteer.model.vo.LoginUserVO;
+import com.ljs.livolunteer.model.vo.UserStatsVO;
 import com.ljs.livolunteer.model.vo.UserVO;
 import com.ljs.livolunteer.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import javax.annotation.Resource;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +45,18 @@ import java.util.stream.Collectors;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
     private static final String SALT = "ljs_volunteer";
+
+    @Resource
+    private ActivityRegistrationMapper activityRegistrationMapper;
+
+    @Resource
+    private ActivityMapper activityMapper;
+
+    @Resource
+    private VolunteerHoursMapper volunteerHoursMapper;
+
+    @Resource
+    private CheckInRecordMapper checkInRecordMapper;
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -177,5 +203,167 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public String encryptPassword(String userPassword) {
         return DigestUtil.md5Hex(SALT + userPassword);
+    }
+
+    @Override
+    public UserStatsVO getMyStats() {
+        User loginUser = this.getLoginUser();
+        Long userId = loginUser.getId();
+        String role = loginUser.getUserRole();
+
+        UserStatsVO vo = new UserStatsVO();
+        vo.setUserId(userId);
+        vo.setUserRole(role);
+        vo.setTotalVolunteerHours(loginUser.getTotalVolunteerHours() == null
+                ? BigDecimal.ZERO : loginUser.getTotalVolunteerHours());
+
+        boolean isOrganizer = UserConstant.ORGANIZER_ROLE.equals(role);
+        boolean isAdmin = UserConstant.ADMIN_ROLE.equals(role);
+
+        // ===== 志愿者视角统计（所有角色都返回，方便前端复用） =====
+        fillVolunteerStats(vo, userId);
+
+        // ===== 组织者视角统计（仅 organizer / admin） =====
+        if (isOrganizer || isAdmin) {
+            fillOrganizerStats(vo, userId, isAdmin);
+        } else {
+            vo.setOrganizedActivityCount(0L);
+            vo.setOrganizedCompletedCount(0L);
+            vo.setOrganizedInProgressCount(0L);
+            vo.setPendingReviewCount(0L);
+        }
+
+        return vo;
+    }
+
+    /**
+     * 统计志愿者视角字段
+     */
+    private void fillVolunteerStats(UserStatsVO vo, Long userId) {
+        // 我参加的活动数(报名已通过)
+        QueryWrapper<ActivityRegistration> approvedWrapper = new QueryWrapper<>();
+        approvedWrapper.eq("userId", userId)
+                .eq("status", RegistrationStatusEnum.APPROVED.getValue());
+        Long joinedCount = activityRegistrationMapper.selectCount(approvedWrapper);
+        vo.setJoinedActivityCount(joinedCount == null ? 0L : joinedCount);
+
+        // 我的报名总数(不含已取消)
+        QueryWrapper<ActivityRegistration> totalWrapper = new QueryWrapper<>();
+        totalWrapper.eq("userId", userId)
+                .ne("status", RegistrationStatusEnum.CANCELLED.getValue());
+        Long regTotal = activityRegistrationMapper.selectCount(totalWrapper);
+        vo.setRegistrationTotalCount(regTotal == null ? 0L : regTotal);
+
+        // 我的待审核数 = 报名待审核 + 志愿时长待认证
+        QueryWrapper<ActivityRegistration> pendingRegWrapper = new QueryWrapper<>();
+        pendingRegWrapper.eq("userId", userId)
+                .eq("status", RegistrationStatusEnum.PENDING.getValue());
+        Long pendingReg = activityRegistrationMapper.selectCount(pendingRegWrapper);
+
+        QueryWrapper<VolunteerHours> pendingHoursWrapper = new QueryWrapper<>();
+        pendingHoursWrapper.eq("userId", userId)
+                .eq("status", VolunteerHoursStatusEnum.PENDING.getValue());
+        Long pendingHours = volunteerHoursMapper.selectCount(pendingHoursWrapper);
+
+        vo.setMyPendingCount((pendingReg == null ? 0L : pendingReg)
+                + (pendingHours == null ? 0L : pendingHours));
+
+        // 我的签到次数
+        QueryWrapper<CheckInRecord> checkInWrapper = new QueryWrapper<>();
+        checkInWrapper.eq("userId", userId);
+        Long checkInCount = checkInRecordMapper.selectCount(checkInWrapper);
+        vo.setCheckInCount(checkInCount == null ? 0L : checkInCount);
+
+        // 我已完成的活动数 = 我已通过报名的活动中，活动状态为已完成的数量
+        vo.setCompletedActivityCount(countMyCompletedActivities(userId));
+    }
+
+    /**
+     * 统计我已通过报名的活动里，活动状态为已完成的数量
+     */
+    private Long countMyCompletedActivities(Long userId) {
+        QueryWrapper<ActivityRegistration> regWrapper = new QueryWrapper<>();
+        regWrapper.select("activityId")
+                .eq("userId", userId)
+                .eq("status", RegistrationStatusEnum.APPROVED.getValue());
+        List<ActivityRegistration> regs = activityRegistrationMapper.selectList(regWrapper);
+        if (CollectionUtils.isEmpty(regs)) {
+            return 0L;
+        }
+        List<Long> activityIds = regs.stream()
+                .map(ActivityRegistration::getActivityId)
+                .collect(Collectors.toList());
+
+        QueryWrapper<Activity> activityWrapper = new QueryWrapper<>();
+        activityWrapper.in("id", activityIds)
+                .eq("status", ActivityStatusEnum.COMPLETED.getValue());
+        Long count = activityMapper.selectCount(activityWrapper);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 统计组织者视角字段。admin 视为可看全部活动。
+     */
+    private void fillOrganizerStats(UserStatsVO vo, Long userId, boolean isAdmin) {
+        QueryWrapper<Activity> baseWrapper = new QueryWrapper<>();
+        if (!isAdmin) {
+            baseWrapper.eq("organizerId", userId);
+        }
+        Long organizedTotal = activityMapper.selectCount(baseWrapper);
+        vo.setOrganizedActivityCount(organizedTotal == null ? 0L : organizedTotal);
+
+        QueryWrapper<Activity> completedWrapper = new QueryWrapper<>();
+        if (!isAdmin) {
+            completedWrapper.eq("organizerId", userId);
+        }
+        completedWrapper.eq("status", ActivityStatusEnum.COMPLETED.getValue());
+        Long completed = activityMapper.selectCount(completedWrapper);
+        vo.setOrganizedCompletedCount(completed == null ? 0L : completed);
+
+        QueryWrapper<Activity> inProgressWrapper = new QueryWrapper<>();
+        if (!isAdmin) {
+            inProgressWrapper.eq("organizerId", userId);
+        }
+        inProgressWrapper.eq("status", ActivityStatusEnum.IN_PROGRESS.getValue());
+        Long inProgress = activityMapper.selectCount(inProgressWrapper);
+        vo.setOrganizedInProgressCount(inProgress == null ? 0L : inProgress);
+
+        // 待我审核数 = 我活动中待审核报名 + 待认证志愿时长
+        // admin 直接看全表
+        Long pendingReg;
+        Long pendingHours;
+        if (isAdmin) {
+            QueryWrapper<ActivityRegistration> regWrapper = new QueryWrapper<>();
+            regWrapper.eq("status", RegistrationStatusEnum.PENDING.getValue());
+            pendingReg = activityRegistrationMapper.selectCount(regWrapper);
+
+            QueryWrapper<VolunteerHours> hoursWrapper = new QueryWrapper<>();
+            hoursWrapper.eq("status", VolunteerHoursStatusEnum.PENDING.getValue());
+            pendingHours = volunteerHoursMapper.selectCount(hoursWrapper);
+        } else {
+            // organizer：先取自己活动 id，再查关联的待审核数据
+            QueryWrapper<Activity> idWrapper = new QueryWrapper<>();
+            idWrapper.select("id").eq("organizerId", userId);
+            List<Activity> myActivities = activityMapper.selectList(idWrapper);
+            if (CollectionUtils.isEmpty(myActivities)) {
+                pendingReg = 0L;
+                pendingHours = 0L;
+            } else {
+                List<Long> activityIds = myActivities.stream()
+                        .map(Activity::getId).collect(Collectors.toList());
+
+                QueryWrapper<ActivityRegistration> regWrapper = new QueryWrapper<>();
+                regWrapper.in("activityId", activityIds)
+                        .eq("status", RegistrationStatusEnum.PENDING.getValue());
+                pendingReg = activityRegistrationMapper.selectCount(regWrapper);
+
+                QueryWrapper<VolunteerHours> hoursWrapper = new QueryWrapper<>();
+                hoursWrapper.in("activityId", activityIds)
+                        .eq("status", VolunteerHoursStatusEnum.PENDING.getValue());
+                pendingHours = volunteerHoursMapper.selectCount(hoursWrapper);
+            }
+        }
+        vo.setPendingReviewCount((pendingReg == null ? 0L : pendingReg)
+                + (pendingHours == null ? 0L : pendingHours));
     }
 }

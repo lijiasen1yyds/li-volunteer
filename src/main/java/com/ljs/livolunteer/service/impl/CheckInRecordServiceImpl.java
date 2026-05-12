@@ -208,7 +208,10 @@ public class CheckInRecordServiceImpl extends ServiceImpl<CheckInRecordMapper, C
         boolean result = this.updateById(updateRecord);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "签退失败");
 
-        volunteerHoursService.savePendingVolunteerHours(activityId, loginUser.getId(), actualHours);
+        // 活动时长需达到1小时才有效,否则不计入累计志愿时长
+        if (actualHours.compareTo(BigDecimal.ONE) >= 0) {
+            volunteerHoursService.savePendingVolunteerHours(activityId, loginUser.getId(), actualHours);
+        }
         return true;
     }
 
@@ -226,23 +229,16 @@ public class CheckInRecordServiceImpl extends ServiceImpl<CheckInRecordMapper, C
         }
 
         for (CheckInRecord record : uncheckedOutRecords) {
-            // 用活动结束时间作为签退时间
-            long durationMillis = activityEndTime.getTime() - record.getCheckInTime().getTime();
-            BigDecimal actualHours = BigDecimal.valueOf(durationMillis)
-                    .divide(BigDecimal.valueOf(3600000), 2, RoundingMode.HALF_UP);
-
-            // 更新签到记录为已签退
+            // 自动签退表示用户未主动签退,活动时长记为0,不计入累计志愿时长
             CheckInRecord updateRecord = new CheckInRecord();
             updateRecord.setId(record.getId());
             updateRecord.setCheckOutTime(activityEndTime);
-            updateRecord.setActualHours(actualHours);
+            updateRecord.setActualHours(BigDecimal.ZERO);
             updateRecord.setStatus(CheckInStatusEnum.CHECKED_OUT.getValue());
             this.updateById(updateRecord);
-
-            // 生成志愿时长认证记录
-            volunteerHoursService.savePendingVolunteerHours(activityId, record.getUserId(), actualHours);
+            // 不生成志愿时长认证记录(自动签退时长为0)
         }
 
-        log.info("活动 {} 自动签退 {} 名志愿者", activityId, uncheckedOutRecords.size());
+        log.info("活动 {} 自动签退 {} 名志愿者(时长记为0)", activityId, uncheckedOutRecords.size());
     }
 }
